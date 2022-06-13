@@ -1,16 +1,13 @@
 import telebot
-from telebot import types
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
-
 import calc
 import sqlite3
 
+bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 con = sqlite3.connect("food.db", check_same_thread=False)
+con2 = sqlite3.connect("users.db", check_same_thread=False)
 cur = con.cursor()
-
-
-bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
+cur2 = con2.cursor()
 
 global eaten_food
 eaten_food = []
@@ -33,6 +30,15 @@ def Search_name(a):
         sql = f"SELECT * FROM food WHERE name LIKE '%{x}%'"
     cur.execute(sql)
     return (cur.fetchmany(10))
+
+def Add_user(list):
+    cur2.execute("INSERT INTO users VALUES(?, ?, ?, ?, ?, ?, ?)", list)
+    con2.commit()
+
+def Add_food(list):
+    cur.execute("INSERT INTO food VALUES(?, ?, ?, ?, ?)", list)
+    con.commit()
+
 
 @bot.message_handler(commands=["start", 'help'])
 def start(m):
@@ -150,6 +156,16 @@ def norm_kcal(message):
                 if (parametrs != [0]):
                     parametrs.clear()
                 parametrs.append(d)
+                list_db = [message.chat.id, gender, age, weight, height, kf, mode]
+
+                cur2.execute("SELECT * FROM users WHERE id = '%d' " % message.chat.id)
+                test = cur2.fetchone()
+                if test == None:
+                    Add_user(list_db)
+                else:
+                    cur2.execute('''UPDATE users SET sex = ?, age = ?, weight = ?, height = ?, activity = ?, goal = ? 
+                    WHERE id = ?''', [gender, age, weight, height, kf, mode, message.chat.id])
+                con2.commit()
 
             except:
                 bot.send_message(message.chat.id, 'Пожалуйста, ответье числом от 1 до 3')
@@ -163,22 +179,26 @@ def norm_kcal(message):
     bot.send_message(message.chat.id, text="Введите свой пол (м/ж)", reply_markup=markup)
     bot.register_next_step_handler(message, input_gender)
 
-@bot.message_handler(commands=['see_norm_kcal'])
+@@bot.message_handler(commands=['see_norm_kcal'])
 def see_norm_kcal(message):
-    if (parametrs != []):
-        for par in parametrs:
-            d = dict.copy(par)
-            gender = d['Пол: ']
-            age = d['Возраст:']
-            weight = d['Вес: ']
-            height = d['Рост: ']
-            kf = d['КФ: ']
-            mode = d['Мод: ']
-            bmr = d['bmr: ']
-            bmr_mode = d['bmr_mode: ']
-            bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
+    cur2 = con2.cursor()
+    user_id = message.chat.id
+
+    cur2.execute("SELECT * FROM users WHERE id = '%i' " % user_id)
+    parametrs = cur2.fetchone()
+    if parametrs != None:
+        gender = parametrs[1]
+        age = parametrs[2]
+        weight = parametrs[3]
+        height = parametrs[4]
+        activity = parametrs[5]
+        mode = parametrs[6]
+        bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
+        bot.send_message(message.chat.id,"Чтобы изменить свои параметры, используйте функцию \"/add_norm_kcal\"")
+
     else:
         bot.send_message(message.chat.id, "Параметры не заполнены")
+        bot.register_next_step_handler(message, norm_kcal)
 
 @bot.message_handler(commands=['add_my'])
 def add_my(message):
@@ -268,6 +288,8 @@ def add_my(message):
                 eaten_food.append(d)
                 bot.send_message(message.chat.id, 'Записал :)')
                 print(eaten_food)
+                food_db = (name_self, ccal_self * weight_self / 100.0, prot_self * weight_self / 100.0, fats_self * weight_self / 100.0, cbh_self * weight_self / 100.0)
+                Add_food(food_db)
             except:
                 bot.send_message(message.chat.id,
                                  'Пожалуйста введите Вес (г) цифрами и без пробелов или напишите "Отменить"')
@@ -303,15 +325,6 @@ def handle_text(message):
     i = 1
     for example in axc:
         bot.send_message(message.chat.id, f'Название: {example[0]}\nккал: {example[1]}\nБелки: {example[2]}, Жиры: {example[3]}, Углеводы: {example[4]}\nНОМЕР: {i}')
-        # markup = InlineKeyboardMarkup()
-        # but1 = InlineKeyboardButton(text="Добавить", switch_inline_query_current_chat=f"{i}")
-        # #but2 = InlineKeyboardButton(text="Отменить", switch_inline_query_current_chat="Отменить")
-        # markup.add(but1)
-        # markup = types.InlineKeyboardMarkup()
-        # markup.add(types.InlineKeyboardButton(text="Добавить", callback_data=f'{i}'))
-        # bot.send_message(message.chat.id,
-        #                  text=f'Название: {example[0]}\nккал: {example[1]}\nБелки: {example[2]}\nЖиры: {example[3]}\nУглеводы: {example[4]}\n',
-        #                  reply_markup=markup)
         i+=1
 
     def check(message):
