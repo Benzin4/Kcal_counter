@@ -1,11 +1,16 @@
 import telebot
+from telebot import types
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
 import calc
 import sqlite3
 
-bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 con = sqlite3.connect("food.db", check_same_thread=False)
-con2 = sqlite3.connect("users.db", check_same_thread=False)
+cur = con.cursor()
+
+
+bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 global eaten_food
 eaten_food = []
@@ -14,7 +19,6 @@ global parametrs
 parametrs = []
 
 def Search_name(a):
-    cur = con.cursor()
     s = []
     s.append(a)
     f = (a.split(' '))
@@ -30,21 +34,9 @@ def Search_name(a):
     cur.execute(sql)
     return (cur.fetchmany(10))
 
-def Add_user(list):
-    cur2 = con2.cursor()
-    cur2.execute("INSERT INTO users VALUES(?, ?, ?, ?, ?, ?, ?, ?)", list)
-    con2.commit()
-
-def Add_food(list):
-    cur = con.cursor()
-    cur.execute("INSERT INTO food VALUES(?, ?, ?, ?, ?)", list)
-    con.commit()
-
 @bot.message_handler(commands=["start", 'help'])
 def start(m):
-    bot.send_message(m.chat.id, 'Введите любой продукт или блюдо: ')
-    bot.send_message(m.chat.id,
-    'Введите "сколько сьел", чтобы узнать сколько вы сегодня сьели; "добавить свое", чтобы добавить свое блюдо или продукт, или "рассчитать норм ккал" чтобы рассчитать суточную номру КБЖУ в день')
+    bot.send_message(m.chat.id, 'Введите любой продукт или блюдо или воспользуйтесь кнопками')
 
 @bot.message_handler(commands=['add_norm_kcal'])
 def norm_kcal(message):
@@ -58,6 +50,7 @@ def norm_kcal(message):
                 global gender
                 if (message.text == 'м' or message.text == 'ж'):
                     gender = message.text
+                    bot.send_message(message.chat.id,'ок', reply_markup=types.ReplyKeyboardRemove())
                 else:
                     print(gender)
                 bot.send_message(message.chat.id, 'Введите свой возраст')
@@ -102,9 +95,18 @@ def norm_kcal(message):
             try:
                 global height
                 height = float(message.text)
-                bot.send_message(message.chat.id, 'Введите свой уровень активности:')
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("1")
+                btn2 = types.KeyboardButton("2")
+                btn3 = types.KeyboardButton("3")
+                btn4 = types.KeyboardButton("4")
+                btn5 = types.KeyboardButton("5")
+                markup.add(btn1, btn2, btn3, btn4, btn5)
+                bot.send_message(message.chat.id, text="Введите свой уровень активности:",
+                                 reply_markup=markup)
                 bot.send_message(message.chat.id,
                                  'Минимальный уровень активности — 1,\nНизкий уровень активности — 2,\nСредний уровень активности — 3,\nВысокий уровень — 4,\nОчень высокий —  5:\n')
+
                 bot.register_next_step_handler(message, input_kf)
             except:
                 bot.send_message(message.chat.id, 'Пожалуйста, введите свой рост цифрами')
@@ -116,17 +118,17 @@ def norm_kcal(message):
         else:
             try:
                 global kf
-                if (int(message.text) == 1):
-                    kf = 1.2
-                if (int(message.text) == 2):
-                    kf = 1.375
-                if (int(message.text) == 3):
-                    kf = 1.55
-                if (int(message.text) == 4):
-                    kf = 1.725
-                if (int(message.text) == 5):
-                    kf = 1.9
-                bot.send_message(message.chat.id, 'Выберите и введите свою цель: ')
+                if (int(message.text) == 1): kf = 1.2
+                if (int(message.text) == 2): kf = 1.375
+                if (int(message.text) == 3): kf = 1.55
+                if (int(message.text) == 4): kf = 1.725
+                if (int(message.text) == 5): kf = 1.9
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("1")
+                btn2 = types.KeyboardButton("2")
+                btn3 = types.KeyboardButton("3")
+                markup.add(btn1, btn2, btn2)
+                bot.send_message(message.chat.id, text="Выберите и введите свою цель: ", reply_markup=markup)
                 bot.send_message(message.chat.id, 'Похудеть - 1, \nПоддерживать свой вес - 2, \nНабрать массу - 3')
                 bot.register_next_step_handler(message, input_mode)
             except:
@@ -139,7 +141,7 @@ def norm_kcal(message):
         else:
             try:
                 global mode
-                if (1 <= int(message.text) <= 5):
+                if (1 <= int(message.text) <= 3):
                     mode = int(message.text)
                 bmr_mode = calc.Find_BMR_mode(calc.Find_BMR(gender, age, weight, height), mode)
                 bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
@@ -148,16 +150,17 @@ def norm_kcal(message):
                 if (parametrs != [0]):
                     parametrs.clear()
                 parametrs.append(d)
-                
-                list_db = [message.chat.id, gender, age, weight, height, kf, mode, bmr_mode]
-                Add_user(list_db)
 
             except:
                 bot.send_message(message.chat.id, 'Пожалуйста, ответье числом от 1 до 3')
                 bot.register_next_step_handler(message, input_mode)
 
     global bmr_mode
-    bot.send_message(message.chat.id, 'Введите свой пол (м/ж)')
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn_m = types.KeyboardButton("м")
+    btn_w = types.KeyboardButton("ж")
+    markup.add(btn_m, btn_w)
+    bot.send_message(message.chat.id, text="Введите свой пол (м/ж)", reply_markup=markup)
     bot.register_next_step_handler(message, input_gender)
 
 @bot.message_handler(commands=['see_norm_kcal'])
@@ -265,10 +268,6 @@ def add_my(message):
                 eaten_food.append(d)
                 bot.send_message(message.chat.id, 'Записал :)')
                 print(eaten_food)
-                
-                food_db = (name_self, ccal_self * weight_self / 100.0, prot_self * weight_self / 100.0, fats_self * weight_self / 100.0, cbh_self * weight_self / 100.0)
-                Add_food(food_db)                
-                
             except:
                 bot.send_message(message.chat.id,
                                  'Пожалуйста введите Вес (г) цифрами и без пробелов или напишите "Отменить"')
@@ -300,14 +299,32 @@ def handle_text(message):
     print(message.chat.id)
     axc = Search_name(str(message.text).lower())
     print(axc)
+    global i
     i = 1
     for example in axc:
-        bot.send_message(message.chat.id, f'Название: {example[0]}\nккал: {example[1]}\n Белки: {example[2]}\nЖиры: {example[3]}\nУглеводы: {example[4]}\n НОМЕР: {i}')
+        bot.send_message(message.chat.id, f'Название: {example[0]}\nккал: {example[1]}\nБелки: {example[2]}, Жиры: {example[3]}, Углеводы: {example[4]}\nНОМЕР: {i}')
+        # markup = InlineKeyboardMarkup()
+        # but1 = InlineKeyboardButton(text="Добавить", switch_inline_query_current_chat=f"{i}")
+        # #but2 = InlineKeyboardButton(text="Отменить", switch_inline_query_current_chat="Отменить")
+        # markup.add(but1)
+        # markup = types.InlineKeyboardMarkup()
+        # markup.add(types.InlineKeyboardButton(text="Добавить", callback_data=f'{i}'))
+        # bot.send_message(message.chat.id,
+        #                  text=f'Название: {example[0]}\nккал: {example[1]}\nБелки: {example[2]}\nЖиры: {example[3]}\nУглеводы: {example[4]}\n',
+        #                  reply_markup=markup)
         i+=1
 
     def check(message):
+
         if (message.text.lower() == 'да'):
-            bot.send_message(message.chat.id, "введите номер нрав еды, которую записать")
+            #bot.send_message(message.chat.id, "Введите номер еды, которую записать")
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            global btns
+            btns = [0]*10
+            for j in range(i-1):
+                btns[j] = types.KeyboardButton(f'{j+1}')
+                markup.add(btns[j])
+            bot.send_message(message.chat.id, text="Введите номер еды, которую записать", reply_markup=markup)
             bot.register_next_step_handler(message, check_number)
         elif (message.text.lower() == 'нет'):
             bot.send_message(message.chat.id, "попробуйте другой запрос или добавьте свое блюдо")
@@ -323,6 +340,7 @@ def handle_text(message):
                 global num
                 if (int(message.text) >= 1 and int(message.text) <= i - 1):
                     num = int(message.text)
+                    bot.send_message(message.chat.id, "Отличный выбор!", reply_markup=types.ReplyKeyboardRemove())
                 else:
                     bot.send_message(message.chat.id, f"{num}")
                 print(num)
@@ -330,7 +348,7 @@ def handle_text(message):
                 bot.register_next_step_handler(message, check_weight)
             except:
                 bot.send_message(message.chat.id,
-                                    f'Введите номер еды цифрой от 1 до {i - 1} или напишите "Отменить"')
+                                f'Введите номер еды цифрой от 1 до {i - 1} или напишите "Отменить"')
                 bot.register_next_step_handler(message, check_number)
 
     def check_weight(message):
@@ -358,7 +376,11 @@ def handle_text(message):
                 bot.register_next_step_handler(message, check_weight)
 
     if (i != 1):
-        bot.send_message(message.chat.id, 'хотите что-то добавить в список сьеденноего? (да/нет)')
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        yes_btn = types.KeyboardButton("да")
+        no_btn = types.KeyboardButton("нет")
+        markup.add(yes_btn, no_btn)
+        bot.send_message(message.chat.id, text="Хотите что-то добавить в список сьеденноего?", reply_markup=markup)
         bot.register_next_step_handler(message, check)
     else:
         bot.send_message(message.chat.id, "Увы, по вашему запросу не было найдено ни одного блюда.")
