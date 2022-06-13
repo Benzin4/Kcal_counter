@@ -180,7 +180,7 @@ def norm_kcal(message):
     bot.send_message(message.chat.id, text="Введите свой пол (м/ж)", reply_markup=markup)
     bot.register_next_step_handler(message, input_gender)
 
-@@bot.message_handler(commands=['see_norm_kcal'])
+@bot.message_handler(commands=['see_norm_kcal'])
 def see_norm_kcal(message):
     cur2 = con2.cursor()
     user_id = message.chat.id
