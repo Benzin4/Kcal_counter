@@ -1,6 +1,7 @@
 import telebot
 import calc
 import sqlite3
+from telebot import types
 
 bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
