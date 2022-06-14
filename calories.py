@@ -1,12 +1,21 @@
 import telebot
 import calc
 import sqlite3
+from telebot import types
+import datetime
+from datetime import timedelta
+import math
 
 
 bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 con = sqlite3.connect("food.db", check_same_thread=False)
 con2 = sqlite3.connect("users.db", check_same_thread=False)
+con3 = sqlite3.connect("eaten.db", check_same_thread=False)
+
+cur = con.cursor()
+cur2 = con2.cursor()
+cur3 = con3.cursor()
 
 global eaten_food
 eaten_food = []
@@ -15,7 +24,6 @@ global parametrs
 parametrs = []
 
 def Search_name(a):
-    cur = con.cursor()
     s = []
     s.append(a)
     f = (a.split(' '))
@@ -26,27 +34,41 @@ def Search_name(a):
             s[i] = s[i][:len(s[i]) - 1]
 
     for x in s:
-        print(x)
         sql = f"SELECT * FROM food WHERE name LIKE '%{x}%'"
     cur.execute(sql)
+    con.commit()
     return (cur.fetchmany(10))
 
 def Add_user(list):
-    cur2 = con2.cursor()
-    cur2.execute("INSERT INTO users VALUES(?, ?, ?, ?, ?, ?, ?, ?)", list)
+    cur2.execute("INSERT INTO users VALUES(?, ?, ?, ?, ?, ?, ?)", list)
     con2.commit()
 
 def Add_food(list):
-    cur = con.cursor()
     cur.execute("INSERT INTO food VALUES(?, ?, ?, ?, ?)", list)
     con.commit()
 
+def Add_eaten(list):
+    cur3.execute("INSERT INTO eaten VALUES(?, ?, ?, ?)", list)
+    con3.commit()
+
+def Print_One(var):
+    name = var[0]
+    weight = var[1]
+    output = f"SELECT * FROM food WHERE name LIKE '{name}'"
+    cur.execute(output)
+    line = cur.fetchone()
+    return line
+
+def Auto_clear_eaten(now):
+    today = now.day
+    previous_date = now - timedelta(days=1)
+    yesterday = previous_date.day
+    cur3.execute(f"DELETE FROM eaten WHERE date NOT IN ({yesterday}, {today}) ")
+
 @bot.message_handler(commands=["start", 'help'])
 def start(m):
-    bot.send_message(m.chat.id, 'Введите любой продукт или блюдо: ')
-    bot.send_message(m.chat.id,
-    'Введите "сколько сьел", чтобы узнать сколько вы сегодня сьели; "добавить свое", чтобы добавить свое блюдо или продукт, или "рассчитать норм ккал" чтобы рассчитать суточную номру КБЖУ в день')
-
+    bot.send_message(m.chat.id, 'Введите любой продукт или блюдо или воспользуйтесь кнопками')
+    
 @bot.message_handler(commands=['add_norm_kcal'])
 def norm_kcal(message):
     print(parametrs)
@@ -279,21 +301,57 @@ def add_my(message):
 
 @bot.message_handler(commands=['count_food'])
 def count_food(message):
-    bot.send_message(message.chat.id, 'ща скажу')
     ccal = 0
     prot = 0
     fat = 0
     cb = 0
-    for food in eaten_food:
-        d = dict.copy(food)
-        ccal += d['ккал']
-        prot += d['Белки (г)']
-        fat += d['Жиры (г)']
-        cb += d['Углеводы (г)']
+    bot.send_message(message.chat.id, 'ща скажу')
+
+    now = datetime.datetime.now()
+    Auto_clear_eaten(now)
+    day = now.day
+    id = message.chat.id
+
+    cur3.execute(f"SELECT * FROM eaten WHERE id = {id}")
+    res = cur3.fetchall()
+    yesterday = []
+    today = []
+    for x in res:
+        if (math.fabs(day - x[3])) > 0: yesterday.append([x[1], x[2]])
+        else: today.append([x[1], x[2]])
+    if yesterday: bot.send_message(message.chat.id, "Вчера вы съели: ")
+    else: bot.send_message(message.chat.id, "Вчера вы ничего не съели")
+    for var in yesterday:
+        d = Print_One(var)
+        ccal += d[1]
+        prot += d[2]
+        fat += d[3]
+        cb += d[4]
         bot.send_message(message.chat.id,
-                         f'Название: {d["Название"]}\n ккал: {d["ккал"]}\nБелки (г): {d["Белки (г)"]}\n Жиры (г): {d["Жиры (г)"]}\n Углеводы (г): {d["Углеводы (г)"]}\nВес (г): {d["вес (г)"]}')
-    bot.send_message(message.chat.id,
-                     f'итого: ккал: {ccal}\nБелки (г): {prot}\nЖиры (г): {fat}\n Углеводы (г): {cb}')
+                         f'Название: {d[0]}\nKкал: {d[1]}\nБелки: {d[2]}\nЖиры: {d[3]}\nУглеводы: {d[4]}\nВес: {var[1]} (г)')
+
+    if today: bot.send_message(message.chat.id, "Сегодня вы съели: ")
+    else: bot.send_message(message.chat.id, "Сегодня вы ничего не съели")
+    for var in today:
+        d = Print_One(var)
+        ccal += d[1]
+        prot += d[2]
+        fat += d[3]
+        cb += d[4]
+        d = Print_One(var)
+        bot.send_message(message.chat.id,
+                         f'Название: {d[0]}\nKкал: {d[1]}\nБелки: {d[2]}\nЖиры: {d[3]}\nУглеводы: {d[4]}\nВес: {var[1]} (г)')
+    if ccal + cb + fat + prot != 0:
+        bot.send_message(message.chat.id,
+                    f'итого: ккал: {ccal}\nБелки (г): {prot}\nЖиры (г): {fat}\n Углеводы (г): {cb}')
+
+    bot.send_message(message.chat.id, "Если вы хотите очистить весь список, введите команду: /clear_eaten ")
+
+@bot.message_handler(commands=['clear_eaten'])
+def clear_eaten(meaasage):
+    cur3.execute(f"DELETE FROM eaten WHERE id = {meaasage.chat.id}")
+    con3.commit()
+    bot.send_message(meaasage.chat.id, "Изменения внесены успешно")
 
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
