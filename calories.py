@@ -81,6 +81,7 @@ def norm_kcal(message):
                 global gender
                 if (message.text == 'м' or message.text == 'ж'):
                     gender = message.text
+                    bot.send_message(message.chat.id,'ок', reply_markup=types.ReplyKeyboardRemove())
                 else:
                     print(gender)
                 bot.send_message(message.chat.id, 'Введите свой возраст')
@@ -125,9 +126,18 @@ def norm_kcal(message):
             try:
                 global height
                 height = float(message.text)
-                bot.send_message(message.chat.id, 'Введите свой уровень активности:')
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("1")
+                btn2 = types.KeyboardButton("2")
+                btn3 = types.KeyboardButton("3")
+                btn4 = types.KeyboardButton("4")
+                btn5 = types.KeyboardButton("5")
+                markup.add(btn1, btn2, btn3, btn4, btn5)
+                bot.send_message(message.chat.id, text="Введите свой уровень активности:",
+                                 reply_markup=markup)
                 bot.send_message(message.chat.id,
                                  'Минимальный уровень активности — 1,\nНизкий уровень активности — 2,\nСредний уровень активности — 3,\nВысокий уровень — 4,\nОчень высокий —  5:\n')
+
                 bot.register_next_step_handler(message, input_kf)
             except:
                 bot.send_message(message.chat.id, 'Пожалуйста, введите свой рост цифрами')
@@ -139,17 +149,17 @@ def norm_kcal(message):
         else:
             try:
                 global kf
-                if (int(message.text) == 1):
-                    kf = 1.2
-                if (int(message.text) == 2):
-                    kf = 1.375
-                if (int(message.text) == 3):
-                    kf = 1.55
-                if (int(message.text) == 4):
-                    kf = 1.725
-                if (int(message.text) == 5):
-                    kf = 1.9
-                bot.send_message(message.chat.id, 'Выберите и введите свою цель: ')
+                if (int(message.text) == 1): kf = 1.2
+                if (int(message.text) == 2): kf = 1.375
+                if (int(message.text) == 3): kf = 1.55
+                if (int(message.text) == 4): kf = 1.725
+                if (int(message.text) == 5): kf = 1.9
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("1")
+                btn2 = types.KeyboardButton("2")
+                btn3 = types.KeyboardButton("3")
+                markup.add(btn1, btn2, btn3)
+                bot.send_message(message.chat.id, text="Выберите и введите свою цель: ", reply_markup=markup)
                 bot.send_message(message.chat.id, 'Похудеть - 1, \nПоддерживать свой вес - 2, \nНабрать массу - 3')
                 bot.register_next_step_handler(message, input_mode)
             except:
@@ -162,7 +172,7 @@ def norm_kcal(message):
         else:
             try:
                 global mode
-                if (1 <= int(message.text) <= 5):
+                if (1 <= int(message.text) <= 3):
                     mode = int(message.text)
                 bmr_mode = calc.Find_BMR_mode(calc.Find_BMR(gender, age, weight, height), mode)
                 bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
@@ -171,16 +181,27 @@ def norm_kcal(message):
                 if (parametrs != [0]):
                     parametrs.clear()
                 parametrs.append(d)
-                
-                list_db = [message.chat.id, gender, age, weight, height, kf, mode, bmr_mode]
-                Add_user(list_db)
+                list_db = [message.chat.id, gender, age, weight, height, kf, mode]
+
+                cur2.execute("SELECT * FROM users WHERE id = '%d' " % message.chat.id)
+                test = cur2.fetchone()
+                if test == None:
+                    Add_user(list_db)
+                else:
+                    cur2.execute('''UPDATE users SET sex = ?, age = ?, weight = ?, height = ?, activity = ?, goal = ? 
+                    WHERE id = ?''', [gender, age, weight, height, kf, mode, message.chat.id])
+                con2.commit()
 
             except:
                 bot.send_message(message.chat.id, 'Пожалуйста, ответье числом от 1 до 3')
                 bot.register_next_step_handler(message, input_mode)
 
     global bmr_mode
-    bot.send_message(message.chat.id, 'Введите свой пол (м/ж)')
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn_m = types.KeyboardButton("м")
+    btn_w = types.KeyboardButton("ж")
+    markup.add(btn_m, btn_w)
+    bot.send_message(message.chat.id, text="Введите свой пол (м/ж)", reply_markup=markup)
     bot.register_next_step_handler(message, input_gender)
 
 @bot.message_handler(commands=['see_norm_kcal'])
