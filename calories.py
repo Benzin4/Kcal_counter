@@ -174,8 +174,7 @@ def norm_kcal(message):
                 global mode
                 if (1 <= int(message.text) <= 3):
                     mode = int(message.text)
-                bmr_mode = calc.Find_BMR_mode(calc.Find_BMR(gender, age, weight, height), mode)
-                bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
+                bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}', reply_markup=types.ReplyKeyboardRemove())
                 d = {'Пол: ': gender, 'Возраст:': age, 'Вес: ': weight, 'Рост: ': height, 'КФ: ': kf, 'Мод: ': mode,
                      'bmr: ': calc.Find_BMR(gender, age, weight, height), 'bmr_mode: ': bmr_mode}
                 if (parametrs != [0]):
