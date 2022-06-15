@@ -6,7 +6,7 @@ import datetime
 from datetime import timedelta
 import math
 from spellchecker import SpellChecker
-#123
+
 bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 spell = SpellChecker(language="ru")
@@ -393,7 +393,7 @@ def clear_eaten(meaasage):
     con3.commit()
     bot.send_message(meaasage.chat.id, "Изменения внесены успешно")
 
-
+# Леонов, функция, проверяющая на ошибки
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     print(message.chat.id)
