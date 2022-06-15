@@ -6,7 +6,6 @@ import datetime
 from datetime import timedelta
 import math
 
-
 bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 con = sqlite3.connect("food.db", check_same_thread=False)
@@ -65,10 +64,11 @@ def Auto_clear_eaten(now):
     yesterday = previous_date.day
     cur3.execute(f"DELETE FROM eaten WHERE date NOT IN ({yesterday}, {today}) ")
 
+
 @bot.message_handler(commands=["start", 'help'])
 def start(m):
     bot.send_message(m.chat.id, 'Введите любой продукт или блюдо или воспользуйтесь кнопками')
-    
+
 @bot.message_handler(commands=['add_norm_kcal'])
 def norm_kcal(message):
     print(parametrs)
@@ -174,7 +174,8 @@ def norm_kcal(message):
                 global mode
                 if (1 <= int(message.text) <= 3):
                     mode = int(message.text)
-                bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}', reply_markup=types.ReplyKeyboardRemove())
+                bmr_mode = calc.Find_BMR_mode(calc.Find_BMR(gender, age, weight, height), mode)
+                bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
                 d = {'Пол: ': gender, 'Возраст:': age, 'Вес: ': weight, 'Рост: ': height, 'КФ: ': kf, 'Мод: ': mode,
                      'bmr: ': calc.Find_BMR(gender, age, weight, height), 'bmr_mode: ': bmr_mode}
                 if (parametrs != [0]):
@@ -205,20 +206,24 @@ def norm_kcal(message):
 
 @bot.message_handler(commands=['see_norm_kcal'])
 def see_norm_kcal(message):
-    if (parametrs != []):
-        for par in parametrs:
-            d = dict.copy(par)
-            gender = d['Пол: ']
-            age = d['Возраст:']
-            weight = d['Вес: ']
-            height = d['Рост: ']
-            kf = d['КФ: ']
-            mode = d['Мод: ']
-            bmr = d['bmr: ']
-            bmr_mode = d['bmr_mode: ']
-            bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
+    cur2 = con2.cursor()
+    user_id = message.chat.id
+
+    cur2.execute("SELECT * FROM users WHERE id = '%i' " % user_id)
+    parametrs = cur2.fetchone()
+    if parametrs != None:
+        gender = parametrs[1]
+        age = parametrs[2]
+        weight = parametrs[3]
+        height = parametrs[4]
+        activity = parametrs[5]
+        mode = parametrs[6]
+        bot.send_message(message.chat.id, f'{calc.Day_kcal(gender, age, weight, height, mode)}')
+        bot.send_message(message.chat.id,"Чтобы изменить свои параметры, используйте функцию \"/add_norm_kcal\"")
+
     else:
         bot.send_message(message.chat.id, "Параметры не заполнены")
+        bot.register_next_step_handler(message, norm_kcal)
 
 @bot.message_handler(commands=['add_my'])
 def add_my(message):
@@ -308,10 +313,12 @@ def add_my(message):
                 eaten_food.append(d)
                 bot.send_message(message.chat.id, 'Записал :)')
                 print(eaten_food)
-                
                 food_db = (name_self, ccal_self * weight_self / 100.0, prot_self * weight_self / 100.0, fats_self * weight_self / 100.0, cbh_self * weight_self / 100.0)
-                Add_food(food_db)                
-                
+                Add_food(food_db)
+
+                now = datetime.datetime.now()
+                eaten_db = (message.chat.id, name_self, weight_self, now.day)
+                Add_eaten(eaten_db)
             except:
                 bot.send_message(message.chat.id,
                                  'Пожалуйста введите Вес (г) цифрами и без пробелов или напишите "Отменить"')
@@ -373,20 +380,29 @@ def clear_eaten(meaasage):
     con3.commit()
     bot.send_message(meaasage.chat.id, "Изменения внесены успешно")
 
+
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
 
     print(message.chat.id)
     axc = Search_name(str(message.text).lower())
     print(axc)
+    global i
     i = 1
     for example in axc:
-        bot.send_message(message.chat.id, f'Название: {example[0]}\nккал: {example[1]}\n Белки: {example[2]}\nЖиры: {example[3]}\nУглеводы: {example[4]}\n НОМЕР: {i}')
+        bot.send_message(message.chat.id, f'Название: {example[0]}\nккал: {example[1]}\nБелки: {example[2]}, Жиры: {example[3]}, Углеводы: {example[4]}\nНОМЕР: {i}')
         i+=1
 
     def check(message):
+
         if (message.text.lower() == 'да'):
-            bot.send_message(message.chat.id, "введите номер нрав еды, которую записать")
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            global btns
+            btns = [0]*10
+            for j in range(i-1):
+                btns[j] = types.KeyboardButton(f'{j+1}')
+                markup.add(btns[j])
+            bot.send_message(message.chat.id, text="Введите номер еды, которую записать", reply_markup=markup)
             bot.register_next_step_handler(message, check_number)
         elif (message.text.lower() == 'нет'):
             bot.send_message(message.chat.id, "попробуйте другой запрос или добавьте свое блюдо")
@@ -402,6 +418,7 @@ def handle_text(message):
                 global num
                 if (int(message.text) >= 1 and int(message.text) <= i - 1):
                     num = int(message.text)
+                    bot.send_message(message.chat.id, "Отличный выбор!", reply_markup=types.ReplyKeyboardRemove())
                 else:
                     bot.send_message(message.chat.id, f"{num}")
                 print(num)
@@ -409,7 +426,7 @@ def handle_text(message):
                 bot.register_next_step_handler(message, check_weight)
             except:
                 bot.send_message(message.chat.id,
-                                    f'Введите номер еды цифрой от 1 до {i - 1} или напишите "Отменить"')
+                                f'Введите номер еды цифрой от 1 до {i - 1} или напишите "Отменить"')
                 bot.register_next_step_handler(message, check_number)
 
     def check_weight(message):
@@ -431,13 +448,21 @@ def handle_text(message):
                 eaten_food.append(d)
                 bot.send_message(message.chat.id, 'Записал :)')
                 print(eaten_food)
+
+                now = datetime.datetime.now()
+                eaten_db = (message.chat.id, axc[int(num) - 1][0], weight, now.day)
+                Add_eaten(eaten_db)
             except:
                 bot.send_message(message.chat.id,
                                 'Пожалуйста введите Вес (г) цифрами и без пробелов или напишите "Отменить"')
                 bot.register_next_step_handler(message, check_weight)
 
     if (i != 1):
-        bot.send_message(message.chat.id, 'хотите что-то добавить в список сьеденноего? (да/нет)')
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        yes_btn = types.KeyboardButton("да")
+        no_btn = types.KeyboardButton("нет")
+        markup.add(yes_btn, no_btn)
+        bot.send_message(message.chat.id, text="Хотите что-то добавить в список сьеденноего?", reply_markup=markup)
         bot.register_next_step_handler(message, check)
     else:
         bot.send_message(message.chat.id, "Увы, по вашему запросу не было найдено ни одного блюда.")
