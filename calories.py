@@ -6,7 +6,7 @@ import datetime
 from datetime import timedelta
 import math
 from spellchecker import SpellChecker
-
+#123
 bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
 spell = SpellChecker(language="ru")
@@ -71,7 +71,7 @@ def Auto_clear_eaten(now):
 def start(m):
     bot.send_message(m.chat.id, 'Введите любой продукт или блюдо или воспользуйтесь кнопками')
 
-
+# Полищук функция + Солкин запись в БД
 @bot.message_handler(commands=['add_norm_kcal'])
 def norm_kcal(message):
     print(parametrs)
@@ -206,7 +206,7 @@ def norm_kcal(message):
     bot.send_message(message.chat.id, text="Введите свой пол (м/ж)", reply_markup=markup)
     bot.register_next_step_handler(message, input_gender)
 
-
+# Полищук функция + Солкин запрос инфы о пользователе с БД
 @bot.message_handler(commands=['see_norm_kcal'])
 def see_norm_kcal(message):
     cur2 = con2.cursor()
@@ -229,6 +229,7 @@ def see_norm_kcal(message):
         bot.register_next_step_handler(message, norm_kcal)
 
 
+# Полищук функция + Солкин запись в БД        
 @bot.message_handler(commands=['add_my'])
 def add_my(message):
     bot.send_message(message.chat.id, 'введите название')
@@ -331,7 +332,7 @@ def add_my(message):
 
     bot.register_next_step_handler(message, input_name)
 
-
+# Полищук и Солкин функция + Солкин запрос из БД
 @bot.message_handler(commands=['count_food'])
 def count_food(message):
     ccal = 0
@@ -386,14 +387,14 @@ def count_food(message):
 
     bot.send_message(message.chat.id, "Если вы хотите очистить весь список, введите команду: /clear_eaten ")
 
-
+ # Солкин
 @bot.message_handler(commands=['clear_eaten'])
 def clear_eaten(meaasage):
     cur3.execute(f"DELETE FROM eaten WHERE id = {meaasage.chat.id}")
     con3.commit()
     bot.send_message(meaasage.chat.id, "Изменения внесены успешно")
 
-# Леонов, функция, проверяющая на ошибки
+
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     print(message.chat.id)
