@@ -9,8 +9,10 @@ from spellchecker import SpellChecker
 #123
 bot = telebot.TeleBot('5510516119:AAFv8yr225_zo-Q9d8ao5QhBggFM7E9c44U')
 
+# испаравление ошибок при поиске Леонов
 spell = SpellChecker(language="ru")
 
+# работа с БД Солкин
 con = sqlite3.connect("food.db", check_same_thread=False)
 con2 = sqlite3.connect("users.db", check_same_thread=False)
 con3 = sqlite3.connect("eaten.db", check_same_thread=False)
@@ -394,13 +396,13 @@ def clear_eaten(meaasage):
     con3.commit()
     bot.send_message(meaasage.chat.id, "Изменения внесены успешно")
 
-
+# Полищук + Леонов + Солкин работа с БД
 @bot.message_handler(content_types=['text'])
 def handle_text(message):
     print(message.chat.id)
     s = message.text
 
-
+    
     layout = dict(zip(map(ord, "qwertyuiop[]asdfghjkl;'zxcvbnm,./`"
                                'QWERTYUIOP{}ASDFGHJKL:"ZXCVBNM<>?~'),
                       "йцукенгшщзхъфывапролджэячсмитьбю.ё"
@@ -461,7 +463,7 @@ def handle_text(message):
                                  f'Введите номер еды цифрой от 1 до {i - 1} или напишите "Отменить"', reply_markup=types.ReplyKeyboardRemove())
                 bot.register_next_step_handler(message, check_number)
 
-    def check_weight(message):
+    def check_weight(message): # Полищук + Леонов + Солкин
         if (message.text.lower() == 'отменить'):
             pass
         else:
