@@ -383,9 +383,9 @@ def count_food(message):
         d = Print_One(var)
         bot.send_message(message.chat.id,
                           f'Название: {d[0]}\nKкал: {d[1]}, Белки: {d[2]}, Жиры: {d[3]}, Углеводы: {d[4]}\nВес: {var[1]} (г)')
-        if ccal + cb + fat + prot != 0:
-            bot.send_message(message.chat.id,
-                         f'итого: ккал: {ccal}\nБелки (г): {prot}\nЖиры (г): {fat}\nУглеводы (г): {cb}')
+    if ccal + cb + fat + prot != 0:
+        bot.send_message(message.chat.id,
+                     f'итого: ккал: {ccal}\nБелки (г): {prot}\nЖиры (г): {fat}\nУглеводы (г): {cb}')
 
     bot.send_message(message.chat.id, "Если вы хотите очистить весь список, введите команду: /clear_eaten ")
 
